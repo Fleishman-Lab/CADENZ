@@ -1,0 +1,129 @@
+<ROSETTASCRIPTS>
+    <SCOREFXNS>
+        <ScoreFunction name="ref_pure" weights="ref2015"/>
+    </SCOREFXNS>
+
+    <RESIDUE_SELECTORS>
+        <Index name="catres_res" resnums="%%catres%%"/> # only 4 catalytic residues
+        <Index name="activesite_res" resnums="%%activesite%%"/> # all of the active site, including the 4 above
+        <Index name="fragment1_res" resnums="%%fragment1%%"/> # FuncLib positions on fragment's blade1 interface
+        <Index name="fragment5_6_res" resnums="%%fragment5_6%%"/> # FuncLib positions on fragment's blade5_6 interface
+    </RESIDUE_SELECTORS>
+
+    <TASKOPERATIONS>
+        <RestrictIdentitiesAtAlignedPositions name="catres_to" source_pdb="3w24_template.pdb.gz" design_only_target_residues="1" resnums="146,251,85,223"/>
+        <SecondaryStructure name="loops" include_terminal_loops="false" ss="L"/>
+
+        <OperateOnResidueSubset name="catres">
+            <Not selector="catres_res"/>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+        <OperateOnResidueSubset name="activesite">
+            <Not selector="activesite_res"/>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+        <OperateOnResidueSubset name="fragment1">
+            <Not selector="fragment1_res"/>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+        <OperateOnResidueSubset name="fragment5_6">
+            <Not selector="fragment5_6_res"/>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+    </TASKOPERATIONS>
+
+    <FILTERS>
+        <ResidueCount name="nres" confidence="0"/>
+        <ResidueCount name="nres_activesite" residue_selector="activesite_res"/>
+        <ResidueCount name="nres_loops" residue_selector="loops"/>
+
+        <DesignableResidues name="desres" task_operations="catres_to"  designable="1" packable="0"/>
+
+        <NetCharge name="net_charge"/>
+        <NetCharge name="net_charge_activesite" task_operations="activesite" />
+
+        <AverageDegree name="degree" confidence="0"/>
+        <AverageDegree name="degree_catres" confidence="0" task_operations="catres"/>
+        <AverageDegree name="degree_activesite" confidence="0" task_operations="activesite"/>
+        <AverageDegree name="degree_fragment1" confidence="0" task_operations="fragment1"/>
+        <AverageDegree name="degree_fragment5_6" confidence="0" task_operations="fragment5_6"/>
+
+        <CavityVolume name="cavity_volume" confidence="0"/>
+        <PackStat name="packstat" confidence="0"/>
+
+        <AtomicContactCount name="contacts" confidence="0"/>
+        <AtomicContactCount name="contacts_catres" confidence="0" task_operations="catres"/>
+        <AtomicContactCount name="contacts_activesite" confidence="0" task_operations="activesite"/>
+        <AtomicContactCount name="contacts_fragment1" confidence="0" task_operations="fragment1"/>
+        <AtomicContactCount name="contacts_fragment5_6" confidence="0" task_operations="fragment5_6"/>
+
+        <TotalSasa name="exposed_total" confidence="0"/>
+        <TotalSasa name="exposed_hydrophobics" confidence="0" hydrophobic="True"/>
+        <TotalSasa name="exposed_polars" confidence="0" polar="True"/>
+
+        <BuriedUnsatHbonds2 name="unsat_hbond2" jump_number="0" confidence="0"/>
+        <BuriedUnsatHbonds2 name="unsat_hbond2_catres" jump_number="0" task_operations="catres" confidence="0"/>
+        <BuriedUnsatHbonds2 name="unsat_hbond2_activesite" jump_number="0" task_operations="activesite" confidence="0"/>
+        <BuriedUnsatHbonds2 name="unsat_hbond2_fragment1" jump_number="0" task_operations="fragment1" confidence="0"/>
+        <BuriedUnsatHbonds2 name="unsat_hbond2_fragment5_6" jump_number="0" task_operations="fragment5_6" confidence="0"/>
+
+        <TaskAwareScoreType name="total_catres" task_operations="catres" scorefxn="ref_pure" score_type="total_score" mode="total"/>
+        <TaskAwareScoreType name="total_activesite" task_operations="activesite" scorefxn="ref_pure" score_type="total_score" mode="total"/>
+        <TaskAwareScoreType name="total_fragment1" task_operations="fragment1" scorefxn="ref_pure" score_type="total_score" mode="total"/>
+        <TaskAwareScoreType name="total_fragment5_6" task_operations="fragment5_6" scorefxn="ref_pure" score_type="total_score" mode="total"/>
+    </FILTERS>
+
+    <SIMPLE_METRICS>
+        <CompositeEnergyMetric name="scores_catres" residue_selector="catres_res" scorefxn="ref_pure" custom_type="catres"/>
+        <CompositeEnergyMetric name="scores_activesite" residue_selector="activesite_res" scorefxn="ref_pure" custom_type="activesite"/>
+        <CompositeEnergyMetric name="scores_fragment1" residue_selector="fragment1_res" scorefxn="ref_pure" custom_type="fragment1"/>
+        <CompositeEnergyMetric name="scores_fragment5_6" residue_selector="fragment5_6_res" scorefxn="ref_pure" custom_type="fragment5_6"/>
+    </SIMPLE_METRICS>
+
+    <MOVERS>
+        <RunSimpleMetrics name="scores_sub_regions" metrics="scores_catres,scores_activesite,scores_fragment1,scores_fragment5_6" prefix=""/>
+    </MOVERS>
+
+    <PROTOCOLS>
+        <Add filter="nres"/>
+        <Add filter="nres_activesite"/>
+        <Add filter_name="nres_loops"/>
+        <Add filter="desres"/>
+        <Add filter="net_charge"/>
+        <Add filter="net_charge_activesite"/>
+        <Add filter="degree"/>
+        <Add filter="degree_catres"/>
+        <Add filter="degree_activesite"/>
+        <Add filter="degree_fragment1"/>
+        <Add filter="degree_fragment5_6"/>
+        <Add filter="cavity_volume"/>
+        <Add filter="packstat"/>
+        <Add filter="contacts"/>
+        <Add filter="contacts_catres"/>
+        <Add filter="contacts_activesite"/>
+        <Add filter="contacts_fragment1"/>
+        <Add filter="contacts_fragment5_6"/>
+        <Add filter="exposed_total"/>
+        <Add filter="exposed_hydrophobics"/>
+        <Add filter="exposed_polars"/>
+        <Add filter="unsat_hbond2"/>
+        <Add filter="unsat_hbond2_catres"/>
+        <Add filter="unsat_hbond2_activesite"/>
+        <Add filter="unsat_hbond2_fragment1"/>
+        <Add filter="unsat_hbond2_fragment5_6"/>
+        <Add filter="total_catres"/>
+        <Add filter="total_activesite"/>
+        <Add filter="total_fragment1"/>
+        <Add filter="total_fragment5_6"/>
+        <Add mover="scores_sub_regions"/>
+    </PROTOCOLS>
+    <OUTPUT scorefxn="ref_pure"/>
+</ROSETTASCRIPTS>
+
+Description: Model multipoint mutants on a chimera.
+
+HOW TO RUN:
+    1. Repeat for all desings in the library
+    2. Make sure to specify the script var relevant for the chimera
+
+rosetta_scripts.default.linuxgccrelease -s NAME.pdb -parser:protocol features.xml -parser:script_vars catres=145,253,84,222 activesite=145,253,84,222,47,48,51,88,91,144,188,220,261,303,311 fragment1=24,25,26,27,28 fragment5_6=221,222,224,225,226,230

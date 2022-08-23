@@ -1,0 +1,93 @@
+<ROSETTASCRIPTS>
+    <SCOREFXNS>
+        <ScoreFunction name="ref_pure" weights="ref2015"/>
+        <ScoreFunction name="scorefxn_full" weights="ref2015">
+            <Reweight scoretype="coordinate_constraint" weight="0.1"/>
+        </ScoreFunction>
+        <ScoreFunction name="soft_rep_full" weights="soft_rep">
+            <Reweight scoretype="coordinate_constraint" weight="0.1"/>
+            <Reweight scoretype="res_type_constraint" weight="0.1"/>
+        </ScoreFunction>
+    </SCOREFXNS>
+
+    <TASKOPERATIONS>
+        <RestrictToRepacking name="rtr"/>
+        <OperateOnResidueSubset name="fix_not_neighbor">
+            <Not>
+                <Neighborhood distance="8">
+                    <Index resnums="%%all_ress%%"/>
+                </Neighborhood>
+            </Not>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+        <InitializeFromCommandline name="init"/>
+        <IncludeCurrent name="include_curr"/>
+
+        <RestrictIdentitiesAtAlignedPositions name="active_site_res" source_pdb="3w24_template.pdb.gz" design_only_target_residues="1" resnums="146,251,85,223"/>
+        <RestrictIdentitiesAtAlignedPositions name="no_repack_cat_res" source_pdb="3w24_template.pdb.gz" design_only_target_residues="0" resnums="146,251,85,223" prevent_repacking="1"/>
+
+
+    </TASKOPERATIONS>
+
+    <FILTERS>
+        <DesignableResidues name="designable" task_operations="fix_not_neighbor" designable="0" packable="1"/>
+    </FILTERS>
+
+    <MOVERS>
+        <AddConstraintsToCurrentConformationMover name="add_CA_cst"/>
+        <AtomCoordinateCstMover name="active_site_res_const" coord_dev="0.1" func_groups="true" task_operations="active_site_res"/>
+
+        <PackRotamersMover name="prm" task_operations="init,include_curr,rtr,fix_not_neighbor,no_repack_cat_res" scorefxn="scorefxn_full"/>
+        <RotamerTrialsMinMover name="rtmin" task_operations="init,include_curr,rtr,fix_not_neighbor,no_repack_cat_res" scorefxn="scorefxn_full"/>
+        <MinMover name="min" bb="1" chi="1" jump="0" scorefxn="scorefxn_full"/>
+        <PackRotamersMover name="soft_repack" scorefxn="soft_rep_full" task_operations="init,include_curr,rtr,fix_not_neighbor,no_repack_cat_res"/>
+
+        <MutateResidue name="mutres0" new_res="%%new_res0%%" target="%%target0%%" preserve_atom_coords="%%pac0%%"/>
+        <MutateResidue name="mutres1" new_res="%%new_res1%%" target="%%target1%%" preserve_atom_coords="%%pac1%%"/>
+        <MutateResidue name="mutres2" new_res="%%new_res2%%" target="%%target2%%" preserve_atom_coords="%%pac2%%"/>
+        <MutateResidue name="mutres3" new_res="%%new_res3%%" target="%%target3%%" preserve_atom_coords="%%pac3%%"/>
+        <MutateResidue name="mutres4" new_res="%%new_res4%%" target="%%target4%%" preserve_atom_coords="%%pac4%%"/>
+        <MutateResidue name="mutres5" new_res="%%new_res5%%" target="%%target5%%" preserve_atom_coords="%%pac5%%"/>
+        <MutateResidue name="mutres6" new_res="%%new_res6%%" target="%%target6%%" preserve_atom_coords="%%pac6%%"/>
+        <MutateResidue name="mutres7" new_res="%%new_res7%%" target="%%target7%%" preserve_atom_coords="%%pac7%%"/>
+        <MutateResidue name="mutres8" new_res="%%new_res8%%" target="%%target8%%" preserve_atom_coords="%%pac8%%"/>
+    </MOVERS>
+    <PROTOCOLS>
+        <Add mover="add_CA_cst"/>
+        <Add mover="active_site_res_const"/>
+        <Add mover="mutres0"/>
+        <Add mover="mutres1"/>
+        <Add mover="mutres2"/>
+        <Add mover="mutres3"/>
+        <Add mover="mutres4"/>
+        <Add mover="mutres5"/>
+        <Add mover="mutres6"/>
+        <Add mover="mutres7"/>
+        <Add mover="mutres8"/>
+        <Add mover="soft_repack"/>
+        <Add mover="min"/>
+        <Add mover="prm"/>
+        <Add mover="min"/>
+    </PROTOCOLS>
+    <OUTPUT scorefxn="ref_pure"/>
+</ROSETTASCRIPTS>
+
+Description: Model multipoint mutants on a chimera.
+
+HOW TO RUN:
+    1. Repeat for each fragment multipoint mutant, on each of the possible chimeric backbone assembled from selected fragments.
+    2. In the bellow example, we model one multipoint mutant of fragment 1r86A in segment 2. it is modeled on the chimera 1us3A_1r86A_3ro8D_3muiB
+    3. change the location of the mutated resideus according to the chimera being modeled (e.g. the 2nd position of this fragment can be on residue 50 in this chimera, but at residue 35 on a different chimera).
+       You can use the GIT//scripts/torsion_db.py to help find the residue positions in the chimera
+    4. Adjust the number of MutateResidue movers as needed
+
+rosetta_scripts.default.linuxgccrelease @flags -s 1us3A_1r86A_3ro8D_3muiB.pdb -out:prefix 1r86A__blade2_4__01020101030301__1us3A_1r86A_3ro8D_3muiB_ -parser:script_vars  target0=53 new_res0=LYS pac0=true target1=54 new_res1=GLU pac1=false target2=57 new_res2=LEU pac2=true target3=94 new_res3=TRP pac3=true target4=96 new_res4=ASP pac4=false target5=97 new_res5=LYS pac5=false target6=153 new_res6=ASN pac6=true all_ress=53,54,57,94,96,97,153
+
+flags file:
+-use_input_sc
+-extrachi_cutoff 5
+-ignore_unrecognized_res
+-chemical:exclude_patches LowerDNA  UpperDNA Cterm_amidation SpecialRotamer VirtualBB ShoveBB VirtualDNAPhosphate VirtualNTerm CTermConnect sc_orbitals pro_hydroxylated_case1 pro_hydroxylated_case2 ser_phosphorylated thr_phosphorylated  tyr_phosphorylated tyr_sulfated lys_dimethylated lys_monomethylated  lys_trimethylated lys_acetylated glu_carboxylated cys_acetylated tyr_diiodinated N_acetylated C_methylamidated MethylatedProteinCterm
+-linmem_ig 10
+-ignore_zero_occupancy false
+-parser:protocol funclib_library_mutate_residues.xml

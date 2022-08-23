@@ -1,0 +1,69 @@
+<ROSETTASCRIPTS>
+    <SCOREFXNS>
+        <ScoreFunction name="ref_full" weights="ref2015">
+            <Reweight scoretype="coordinate_constraint" weight="0.4"/>
+            <Reweight scoretype="res_type_constraint" weight="0.4"/>
+        </ScoreFunction>
+    </SCOREFXNS>
+
+    <TASKOPERATIONS>
+        <InitializeFromCommandline name="init"/>
+        <SeqprofConsensus name="pssm_cutoff" min_aa_probability="0" probability_larger_than_current="0" convert_scores_to_probabilities="0" keep_native="1" filename="%%pssm_full_path%%"/>
+        <RestrictIdentitiesAtAlignedPositions name="active_site_res" source_pdb="%%template%%"  design_only_target_residues="1" resnums="%%template_catres%%" keep_aas="ADEFGHIKLMNPQRSTVWY"/>
+        <RestrictIdentitiesAtAlignedPositions name="no_repack_cat_res" source_pdb="%%template%%" design_only_target_residues="0" resnums="%%template_catres%%" prevent_repacking="1"/>
+        <OperateOnResidueSubset name="no_design_template">
+            <Not>
+                <Index resnums="%%fragment%%"/>
+            </Not>
+            <RestrictToRepackingRLT/>
+        </OperateOnResidueSubset>
+    </TASKOPERATIONS>
+
+    <MOVERS>
+        <FavorSequenceProfile name="FSP" scaling="none" weight="1" pssm="%%pssm_full_path%%" scorefxns="ref_full"/>
+        <MinMover name="min_all" scorefxn="ref_full" chi="1" bb="1" jump="0"/>
+        <Subroutine name="design" xml_fname="fragment_only_design.xml"/>
+        <AddConstraintsToCurrentConformationMover name="add_CA_cst" />
+        <AtomCoordinateCstMover name="active_site_res_const" coord_dev="0.1" func_groups="true" task_operations="active_site_res"/>
+    </MOVERS>
+
+    <FILTERS>
+        <ScoreType name="stability_score_full" scorefxn="ref_full" score_type="total_score" threshold="0.0"/>
+        <Delta name="delta_score_full" filter="stability_score_full" upper="1" lower="0" range="0.5"/>
+        <FilterScan name="filter_scan" scorefxn="ref_full" relax_mover="min_all" keep_native="1" task_operations="init,pssm_cutoff,no_repack_cat_res,no_design_template" delta_filters="delta_score_full" delta="true" resfile_name="%%resfile_path%%" report_all="1" delta_filter_thresholds="-0.75"/>
+        <DesignableResidues name="DesRes" task_operations="init,pssm_cutoff,no_repack_cat_res,no_design_template" designable="1" packable="1" />
+    </FILTERS>
+
+    <PROTOCOLS>
+        <Add mover_name="add_CA_cst"/>
+        <Add mover="active_site_res_const"/>
+        <Add mover="FSP"/>
+        <Add filter="DesRes"/>
+        <Add filter="filter_scan"/>
+        <Add mover="design"/>
+    </PROTOCOLS>
+
+</ROSETTASCRIPTS>
+
+Description: calculates an allowed sequence space for each residue in the protein except the activesite, filters AAs based on PSSM score and ddG. Then passes the allowed sequence space to a second rosetta script for design.
+
+HOW TO RUN:
+    1. Repeat for each fragment from each of the 4 segments
+    2. The parameter "fragment" (i.e. the residues of the fragment to be designed) for each fragment can be found in git at data/splice_out_constant_template.csv
+    3. The PSSM is a chimeric file from the template's pssm (at GIT/pssms/3w24_template.pssm) and the modeled fragment. See GIT/pssms/fragment_in_template_4pud_s4.pssm, where residues 1-250 and 358-362 come from the template's PSSM, and 251-357 from 4pud's PSSM.
+
+rosetta_scripts.default.linuxgccrelease @flags -s NAME.pdb -parser:script_vars pssm_full_path=fragment_in_template_NAME.pssm fragment=188-250 resfile_path=resfiles/s3_NAME
+
+flags file:
+-use_input_sc
+-extrachi_cutoff 10
+-ignore_unrecognized_res
+-chemical:exclude_patches LowerDNA UpperDNA Cterm_amidation SpecialRotamer VirtualBB ShoveBB VirtualDNAPhosphate VirtualNTerm CTermConnect sc_orbitals pro_hydroxylated_case1 pro_hydroxylated_case2 ser_phosphorylated thr_phosphorylated tyr_phosphorylated tyr_sulfated lys_dimethylated lys_monomethylated lys_trimethylated lys_acetylated glu_carboxylated cys_acetylated tyr_diiodinated N_acetylated C_methylamidated MethylatedProteinCterm
+-linmem_ig 10
+-ignore_zero_occupancy false
+-jd2:ntrials 5
+-parser:protocol fragment_only_filterscan.xml
+-use_occurrence_data 1
+-in:file:native 3w24_template.pdb.gz
+-parser:script_vars template=3w24_template.pdb.gz
+-parser:script_vars template_catres=146,251,85,223

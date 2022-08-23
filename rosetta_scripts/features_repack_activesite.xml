@@ -1,0 +1,115 @@
+<ROSETTASCRIPTS>
+
+    <SCOREFXNS>
+        <ScoreFunction name="ref_pure" weights="ref2015"/>
+        <ScoreFunction name="scorefxn_full" weights="ref2015">
+        </ScoreFunction>
+        <ScoreFunction name="soft_rep_full" weights="soft_rep">
+        </ScoreFunction>
+    </SCOREFXNS>
+
+    <RESIDUE_SELECTORS>
+        <Index name="catres_res" resnums="%%catres%%"/> # only 4 catalytic residues
+        <Index name="activesite_res" resnums="%%activesite%%"/> # all of the active site, including the 4 above
+        <Index name="res_146E" resnums="%%146E%%"/>
+        <Index name="res_251E" resnums="%%251E%%"/>
+        <Index name="res_85H" resnums="%%85H%%"/>
+        <Index name="res_223H" resnums="%%223H%%"/>
+    </RESIDUE_SELECTORS>
+
+    <TASKOPERATIONS>
+        <RestrictToRepacking name="rtr"/>
+        <InitializeFromCommandline name="init"/>
+        <IncludeCurrent name="include_curr"/>
+
+        <OperateOnResidueSubset name="fix_not_neighbor">
+            <Not>
+                <Neighborhood selector="activesite_res" distance="8"/>
+            </Not>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+
+        <OperateOnResidueSubset name="to_catres">
+            <Not selector="catres_res"/>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+        <OperateOnResidueSubset name="to_activesite">
+            <Not selector="activesite_res"/>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+        <OperateOnResidueSubset name="to_146E">
+            <Not selector="res_146E"/>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+        <OperateOnResidueSubset name="to_251E">
+            <Not selector="res_251E"/>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+        <OperateOnResidueSubset name="to_85H">
+            <Not selector="res_85H"/>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+        <OperateOnResidueSubset name="to_223H">
+            <Not selector="res_223H"/>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+    </TASKOPERATIONS>
+
+    <SIMPLE_METRICS>
+        <RMSDMetric name="rmsd_146E" custom_type="146E" reference_name="input_pose" residue_selector="res_146E" residue_selector_ref="res_146E"/>
+        <RMSDMetric name="rmsd_251E" custom_type="251E" reference_name="input_pose" residue_selector="res_251E" residue_selector_ref="res_251E"/>
+        <RMSDMetric name="rmsd_85H" custom_type="85H" reference_name="input_pose" residue_selector="res_85H" residue_selector_ref="res_85H"/>
+        <RMSDMetric name="rmsd_223H" custom_type="223H" reference_name="input_pose" residue_selector="res_223H" residue_selector_ref="res_223H"/>
+        <RMSDMetric name="rmsd_catres" custom_type="catres" reference_name="input_pose" residue_selector="catres_res" residue_selector_ref="catres_res"/>
+        <RMSDMetric name="rmsd_activesite" custom_type="activesite" reference_name="input_pose" residue_selector="activesite_res" residue_selector_ref="activesite_res"/>
+    </SIMPLE_METRICS>
+
+    <MOVERS>
+        <SavePoseMover name="save_native" restore_pose="0" reference_name="input_pose"/>
+
+        <PackRotamersMover name="prm" task_operations="init,include_curr,rtr,fix_not_neighbor" scorefxn="scorefxn_full"/>
+        <PackRotamersMover name="soft_repack" scorefxn="soft_rep_full" task_operations="init,include_curr,rtr,fix_not_neighbor"/>
+        <MinMover name="min" bb="0" chi="1" jump="0" scorefxn="scorefxn_full"/>
+
+        <RunSimpleMetrics name="metrics_rmsd" metrics="rmsd_146E,rmsd_251E,rmsd_85H,rmsd_223H,rmsd_catres,rmsd_activesite"/>
+    </MOVERS>
+
+    <FILTERS>
+        <TaskAwareScoreType name="total_146E_filter" score_type="total_score" mode="total" task_operations="to_146E" scorefxn="ref_pure" confidence="0"/>
+        <TaskAwareScoreType name="total_251E_filter" score_type="total_score" mode="total" task_operations="to_251E" scorefxn="ref_pure" confidence="0"/>
+        <TaskAwareScoreType name="total_85H_filter" score_type="total_score" mode="total" task_operations="to_85H" scorefxn="ref_pure" confidence="0"/>
+        <TaskAwareScoreType name="total_223H_filter" score_type="total_score" mode="total" task_operations="to_223H" scorefxn="ref_pure" confidence="0"/>
+        <TaskAwareScoreType name="total_catres_filter" score_type="total_score" mode="total" task_operations="to_catres" scorefxn="ref_pure" confidence="0"/>
+        <TaskAwareScoreType name="total_activesite_filter" score_type="total_score" mode="total" task_operations="to_activesite" scorefxn="ref_pure" confidence="0"/>
+
+        <Delta name="ddg_146E" range="100000" filter="total_146E_filter" scorefxn="ref_pure" reference_name="input_pose" confidence="0"/>
+        <Delta name="ddg_251E" range="100000" filter="total_251E_filter" scorefxn="ref_pure" reference_name="input_pose" confidence="0"/>
+        <Delta name="ddg_85H" range="100000" filter="total_85H_filter" scorefxn="ref_pure" reference_name="input_pose" confidence="0"/>
+        <Delta name="ddg_223H" range="100000" filter="total_223H_filter" scorefxn="ref_pure" reference_name="input_pose" confidence="0"/>
+        <Delta name="ddg_catres" range="100000" filter="total_catres_filter" scorefxn="ref_pure" reference_name="input_pose" confidence="0"/>
+        <Delta name="ddg_activesite" range="100000" filter="total_activesite_filter" scorefxn="ref_pure" reference_name="input_pose" confidence="0"/>
+    </FILTERS>
+
+    <PROTOCOLS>
+        <Add mover="save_native"/>
+        <Add mover="soft_repack"/>
+        <Add mover="min"/>
+        <Add mover="prm"/>
+        <Add mover="min"/>
+        <Add mover="metrics_rmsd"/>
+        <Add filter="ddg_146E"/>
+        <Add filter="ddg_251E"/>
+        <Add filter="ddg_85H"/>
+        <Add filter="ddg_223H"/>
+        <Add filter="ddg_catres"/>
+        <Add filter="ddg_activesite"/>
+    </PROTOCOLS>
+</ROSETTASCRIPTS>
+
+Description: Repack without coordinae constrains, then calculate the RMSD and ddG of catalytic pocket
+
+HOW TO RUN:
+    1. Repeat for all desings in the library
+    2. Make sure to specify the script var relevant for the chimera
+
+rosetta_scripts.default.linuxgccrelease -s NAME.pdb -parser:protocol features_repack_activesite.xml -parser:script_vars catres=137,245,84,215 activesite=137,245,84,215,47,48,51,88,91,136,182,183,186,213,300,308,312 85H=84 146E=137 223H=215 251E=245   

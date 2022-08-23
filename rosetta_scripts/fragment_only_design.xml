@@ -1,0 +1,82 @@
+<ROSETTASCRIPTS>
+    <SCOREFXNS>
+		<ScoreFunction name="ref_full" weights="ref2015">
+			<Reweight scoretype="coordinate_constraint" weight="0.4"/>
+            <Reweight scoretype="res_type_constraint" weight="0.4"/>
+		</ScoreFunction>
+
+		<ScoreFunction name="soft_rep_full" weights="soft_rep">
+			<Reweight scoretype="coordinate_constraint" weight="0.4"/>
+			<Reweight scoretype="res_type_constraint" weight="0.4"/>
+		</ScoreFunction>
+
+		<ScoreFunction name="ref_no_pssm" weights="ref2015">
+			<Reweight scoretype="coordinate_constraint" weight="0.4"/>
+		</ScoreFunction>
+
+        <ScoreFunction name="ref_pure" weights="ref2015"/>
+	</SCOREFXNS>
+
+	<TASKOPERATIONS>
+		<IncludeCurrent name="ICR" /> include current rotamers
+		<InitializeFromCommandline name="init"/>
+        <ReadResfile name="read_resfile" filename="%%resfile_path%%.-0.75"/>
+		<RestrictToRepacking name="rtr"/>
+        <SeqprofConsensus name="seqprofcons" min_aa_probability="0" probability_larger_than_current="0" convert_scores_to_probabilities="0" keep_native="1" filename="%%pssm_full_path%%" debug="1"/>
+        <RestrictIdentitiesAtAlignedPositions name="active_site_res" source_pdb="%%template%%"  design_only_target_residues="1" resnums="%%template_catres%%" keep_aas="ADEFGHIKLMNPQRSTVWY"/>
+        <RestrictIdentitiesAtAlignedPositions name="no_repack_cat_res" source_pdb="%%template%%" design_only_target_residues="0" resnums="%%template_catres%%" prevent_repacking="1"/>
+        <OperateOnResidueSubset name="no_design_template">
+            <Not>
+                <Index resnums="%%fragment%%"/>
+            </Not>
+            <RestrictToRepackingRLT/>
+        </OperateOnResidueSubset>
+	</TASKOPERATIONS>
+
+	<MOVERS>
+        <FavorSequenceProfile name="FSP" pssm="%%pssm_full_path%%" scaling="none" scorefxns="ref_full" weight="1"/>
+		<AddConstraintsToCurrentConformationMover name="add_CA_cst" />
+        <AtomCoordinateCstMover name="active_site_res_const" coord_dev="0.1" func_groups="true" task_operations="active_site_res"/>
+
+        <PackRotamersMover name="soft_design" scorefxn="soft_rep_full" task_operations="init,ICR,read_resfile,seqprofcons,no_repack_cat_res,no_design_template"/>
+		<PackRotamersMover name="hard_design" scorefxn="ref_full" task_operations="init,ICR,read_resfile,seqprofcons,no_repack_cat_res,no_design_template"/>
+		<RotamerTrialsMinMover name="RTmin" scorefxn="ref_full" task_operations="init,rtr,ICR,no_repack_cat_res,no_design_template"/>
+        <TaskAwareMinMover name="soft_min" scorefxn="soft_rep_full" bb="1" jump="0" chi="1" task_operations="rtr,init,no_repack_cat_res,no_design_template"/> do not minimize bb
+		<TaskAwareMinMover name="hard_min" scorefxn="ref_full" bb="1" jump="0" chi="1" task_operations="rtr,init,no_repack_cat_res,no_design_template"/>
+
+        <ParsedProtocol name="design_block">
+			<Add mover_name="soft_design"/>
+			<Add mover_name="soft_min"/>
+			<Add mover_name="soft_design"/>
+			<Add mover_name="hard_min"/>
+			<Add mover_name="hard_design"/>
+			<Add mover_name="hard_min"/>
+			<Add mover_name="hard_design"/>
+			<Add mover_name="RTmin"/>
+			<Add mover_name="RTmin"/>
+			<Add mover_name="hard_min"/>
+		</ParsedProtocol>
+        <LoopOver name="iter4" iterations="4" mover_name="design_block" />
+
+	</MOVERS>
+
+	<FILTERS>
+		<ScoreType confidence="0" name="stability_score_full" score_type="total_score" scorefxn="ref_full" threshold="0"/>
+		<ScoreType confidence="0" name="stability_without_pssm" score_type="total_score" scorefxn="ref_no_pssm" threshold="0"/>
+		<ScoreType confidence="0" name="stability_pure" score_type="total_score" scorefxn="ref_pure" threshold="0"/>
+		<PackStat name="packstat" confidence="0"/>
+		<Time name="timer"/>
+	</FILTERS>
+
+	<PROTOCOLS>
+		<Add mover_name="add_CA_cst"/>
+		<Add mover_name="active_site_res_const"/>
+		<Add mover_name="FSP"/>
+        <Add mover_name="iter4"/>
+		<Add filter_name="stability_score_full"/>
+        <Add filter_name="stability_without_pssm"/>
+        <Add filter_name="stability_pure"/>
+		<Add filter_name="packstat"/>
+	</PROTOCOLS>
+<OUTPUT scorefxn="ref_full"/>
+</ROSETTASCRIPTS>
