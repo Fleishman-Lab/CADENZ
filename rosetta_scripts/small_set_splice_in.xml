@@ -1,0 +1,231 @@
+<ROSETTASCRIPTS>
+    <SCOREFXNS>
+        <ScoreFunction name="ref_pure" weights="ref2015"/>
+        <ScoreFunction name="ref2015_chainbreak" weights="ref2015">
+            <Reweight scoretype="chainbreak" weight="1"/>
+        </ScoreFunction>
+        <ScoreFunction name="ref_2015" weights="ref2015">
+            <Reweight scoretype="res_type_constraint" weight="0.5"/>
+            <Reweight scoretype="coordinate_constraint" weight="1"/>
+            <Reweight scoretype="chainbreak" weight="100"/>
+        </ScoreFunction>
+        <ScoreFunction name="REF_coordcst" weights="ref2015">
+            <Reweight scoretype="res_type_constraint" weight="0.5"/>
+            <Reweight scoretype="coordinate_constraint" weight="1"/>
+        </ScoreFunction>
+        <ScoreFunction name="ref15_strong_pssm" weights="ref2015">
+            <Reweight scoretype="res_type_constraint" weight="100"/>
+        </ScoreFunction>
+        <ScoreFunction name="REF_coordcst_strong" weights="ref2015">
+            <Reweight scoretype="coordinate_constraint" weight="100"/>
+        </ScoreFunction>
+        <ScoreFunction name="soft_rep_coordcst" weights="ref2015_soft">
+            <Reweight scoretype="res_type_constraint" weight="0.5"/>
+            <Reweight scoretype="coordinate_constraint" weight="1"/>
+        </ScoreFunction>
+    </SCOREFXNS>
+    <RESIDUE_SELECTORS>
+        <Index name="catres_res" resnums="%%catres%%"/> # only 4 catalytic residues
+        <Index name="activesite_res" resnums="%%activesite%%"/> # all of the active site, including the 4 above
+        <SecondaryStructure name="loops" include_terminal_loops="false" ss="L"/>
+    </RESIDUE_SELECTORS>
+    <TASKOPERATIONS>
+        <RestrictToRepacking name="rtr"/>
+        <InitializeFromCommandline name="init"/>
+        <IncludeCurrent name="include_curr"/>
+        <SeqprofConsensus name="seqprofcons" min_aa_probability="1" probability_larger_than_current="0" ignore_pose_profile_length_mismatch="0" keep_native="1" debug="0"/>
+        <RestrictAbsentCanonicalAAS name="no_cys" keep_aas="ADEFGHIKLMNPQRSTVWY"/> There are problems with disulfides so just don't allow cys
+
+        <SampleRotamersFromPDB name="template_chelating_res" aligned_positions="52,83,85,89,92,142,145,146,187,189,221,223,251,292,300,48,253" debug="0" add_rotamer="0"/>//restore catalytic Glu
+        <RestrictIdentitiesAtAlignedPositions name="design_only_cat_res" source_pdb="%%template_pdb%%" design_only_target_residues="1" resnums="146,251,85,223"/>
+        <RestrictIdentitiesAtAlignedPositions name="design_only_active_site" source_pdb="%%template_pdb%%" design_only_target_residues="1" resnums="52,83,85,89,92,142,145,146,187,189,221,223,251,292,300,48,253" keep_aas="ADEFGHIKLMNPQRSTVWY"/>
+        <RestrictIdentitiesAtAlignedPositions name="design_only_active_site_repack001" source_pdb="%%template_pdb%%" repack_shell="0.01" design_only_target_residues="1" resnums="52,83,85,89,92,142,145,146,187,189,221,223,251,292,300,48,253" keep_aas="ADEFGHIKLMNPQRSTVWY"/>
+        <RestrictIdentitiesAtAlignedPositions name="no_repack_cat_res" source_pdb="%%template_pdb%%" design_only_target_residues="0" resnums="146,251,85,223" prevent_repacking="1"/>
+        <RestrictIdentitiesAtAlignedPositions name="no_repack_active_site" source_pdb="%%template_pdb%%" design_only_target_residues="0" resnums="52,83,85,89,92,142,145,146,187,189,221,223,251,292,300,48,253" prevent_repacking="1"/>
+        <RestrictIdentitiesAtAlignedPositions name="aligned_no_design_active_site" source_pdb="%%template_pdb%%" design_only_target_residues="0" prevent_repacking="0" resnums="52,83,85,89,92,142,145,146,187,189,221,223,251,292,300,48,253"/>
+        <OperateOnResidueSubset name="catres">
+            <Not selector="catres_res"/>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+        <OperateOnResidueSubset name="activesite">
+            <Not selector="activesite_res"/>
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+        <OperateOnResidueSubset name="no_design_active_site" selector="activesite_res">
+            <RestrictToRepackingRLT/>
+        </OperateOnResidueSubset>
+        <!-- <ThreadSequence name="Thread1" target_sequence="%%threaded_seq_1%%" start_res="%%start_thread_1%%" allow_design_around="0"/> -->
+        <!-- <ThreadSequence name="Thread2_4" target_sequence="%%threaded_seq_2_4%%" start_res="%%start_thread_2_4%%" allow_design_around="0"/> -->
+        <!-- <ThreadSequence name="Thread5_6" target_sequence="%%threaded_seq_5_6%%" start_res="%%start_thread_5_6%%" allow_design_around="0"/> -->
+        <!-- <ThreadSequence name="Thread7_8" target_sequence="%%threaded_seq_7_8%%" start_res="%%start_thread_7_8%%" allow_design_around="0"/> -->
+    </TASKOPERATIONS>
+    <FILTERS>
+        <ResidueCount name="nres" confidence="0"/>
+        <ResidueCount name="nres_loops" residue_selector="loops"/>
+        <AtomicContactCount name="contacts" confidence="0"/>
+        <PackStat name="packstat" confidence="0"/>
+        <AverageDegree name="degree" confidence="0"/>
+        <AverageDegree name="degree_catres" confidence="0" task_operations="catres"/>
+        <AverageDegree name="degree_activesite" confidence="0" task_operations="activesite"/>
+        <DesignableResidues name="desres" task_operations="seqprofcons" designable="1" packable="1"/>
+    </FILTERS>
+    <SIMPLE_METRICS>
+        <CompositeEnergyMetric name="scores_catres" residue_selector="catres_res" scorefxn="ref_pure" custom_type="catres"/>
+        <CompositeEnergyMetric name="scores_activesite" residue_selector="activesite_res" scorefxn="ref_pure" custom_type="activesite"/>
+    </SIMPLE_METRICS>
+    <MOVERS>
+        <!-- <SpliceIn name="splice_in_blade1" min_seg="true" scorefxn="ref_2015" template_file="%%template_pdb%%" task_operations="init,include_curr,no_repack_cat_res,Thread1" torsion_database="%%db_blade1%%" database_pdb_entry="%%entry_blade1%%" design_shell="0" repack_shell="10000">	 -->
+        <!-- <Segments current_segment="blade1">     -->
+        <!-- </Segments>             -->
+        <!-- </SpliceIn> -->
+        <SpliceIn name="splice_in_blade1" min_seg="true" scorefxn="ref_2015" template_file="%%template_pdb%%" task_operations="no_cys,init,include_curr,seqprofcons" torsion_database="%%db_blade1%%" database_pdb_entry="%%entry_blade1%%" design_shell="100" repack_shell="10000">
+            <Segments current_segment="blade1">
+                <segment name="frm1" pdb_profile_match="%%pdb_profile_match%%" profiles="3w24_template:/home/labs/fleishman/rosaliel/repertoire/round2/template/frames/frm1.pssm"/>
+                <segment name="blade1" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade1%%"/>
+                <segment name="blade2_4" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade2_4%%"/>
+                <segment name="blade5_6" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade5_6%%"/>
+                <segment name="blade7_8" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade7_8%%"/>
+                <segment name="frm2" pdb_profile_match="%%pdb_profile_match%%" profiles="3w24_template:/home/labs/fleishman/rosaliel/repertoire/round2/template/frames/frm2.pssm"/>
+            </Segments>
+        </SpliceIn>
+        <SpliceIn name="splice_in_blade2_4" min_seg="true" scorefxn="ref_2015" template_file="%%template_pdb%%" task_operations="no_cys,init,include_curr,seqprofcons" torsion_database="%%db_blade2_4%%" database_pdb_entry="%%entry_blade2_4%%" design_shell="100" repack_shell="10000">
+            <Segments current_segment="blade2_4">
+                <segment name="frm1" pdb_profile_match="%%pdb_profile_match%%" profiles="3w24_template:/home/labs/fleishman/rosaliel/repertoire/round2/template/frames/frm1.pssm"/>
+                <segment name="blade1" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade1%%"/>
+                <segment name="blade2_4" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade2_4%%"/>
+                <segment name="blade5_6" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade5_6%%"/>
+                <segment name="blade7_8" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade7_8%%"/>
+                <segment name="frm2" pdb_profile_match="%%pdb_profile_match%%" profiles="3w24_template:/home/labs/fleishman/rosaliel/repertoire/round2/template/frames/frm2.pssm"/>
+            </Segments>
+        </SpliceIn>
+        <SpliceIn name="splice_in_blade5_6" min_seg="true" scorefxn="ref_2015" template_file="%%template_pdb%%" task_operations="no_cys,init,include_curr,seqprofcons" torsion_database="%%db_blade5_6%%" database_pdb_entry="%%entry_blade5_6%%" design_shell="100" repack_shell="10000">
+            <Segments current_segment="blade5_6">
+                <segment name="frm1" pdb_profile_match="%%pdb_profile_match%%" profiles="3w24_template:/home/labs/fleishman/rosaliel/repertoire/round2/template/frames/frm1.pssm"/>
+                <segment name="blade1" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade1%%"/>
+                <segment name="blade2_4" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade2_4%%"/>
+                <segment name="blade5_6" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade5_6%%"/>
+                <segment name="blade7_8" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade7_8%%"/>
+                <segment name="frm2" pdb_profile_match="%%pdb_profile_match%%" profiles="3w24_template:/home/labs/fleishman/rosaliel/repertoire/round2/template/frames/frm2.pssm"/>
+            </Segments>
+        </SpliceIn>
+        <SpliceIn name="splice_in_blade7_8" min_seg="true" scorefxn="ref_2015" template_file="%%template_pdb%%" task_operations="no_cys,init,include_curr,seqprofcons" torsion_database="%%db_blade7_8%%" database_pdb_entry="%%entry_blade7_8%%" design_shell="100" repack_shell="10000">
+            <Segments current_segment="blade7_8">
+                <segment name="frm1" pdb_profile_match="%%pdb_profile_match%%" profiles="3w24_template:/home/labs/fleishman/rosaliel/repertoire/round2/template/frames/frm1.pssm"/>
+                <segment name="blade1" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade1%%"/>
+                <segment name="blade2_4" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade2_4%%"/>
+                <segment name="blade5_6" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade5_6%%"/>
+                <segment name="blade7_8" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade7_8%%"/>
+                <segment name="frm2" pdb_profile_match="%%pdb_profile_match%%" profiles="3w24_template:/home/labs/fleishman/rosaliel/repertoire/round2/template/frames/frm2.pssm"/>
+            </Segments>
+        </SpliceIn>
+        <Splice name="splice_seqconstraints" scorefxn="ref_2015" add_sequence_constraints_only="1">
+            <Segments current_segment="blade1">
+                <Segment name="frm1" pdb_profile_match="%%pdb_profile_match%%" profiles="3w24_template:/home/labs/fleishman/rosaliel/repertoire/round2/template/frames/frm1.pssm"/>
+                <Segment name="blade1" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade1%%"/>
+                <Segment name="blade2_4" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade2_4%%"/>
+                <Segment name="blade5_6" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade5_6%%"/>
+                <Segment name="blade7_8" pdb_profile_match="%%pdb_profile_match%%" profiles="%%blade7_8%%"/>
+                <Segment name="frm2" pdb_profile_match="%%pdb_profile_match%%" profiles="3w24_template:/home/labs/fleishman/rosaliel/repertoire/round2/template/frames/frm2.pssm"/>
+            </Segments>
+        </Splice>
+        <AddConstraintsToCurrentConformationMover name="add_CA_cst"/>
+        <AtomCoordinateCstMover name="cst_catalytic_res" func_groups="1" task_operations="design_only_active_site_repack001" coord_dev="0.01" native="true"/>
+        <ClearConstraintsMover name="clear_constraints"/>
+
+        <RotamerTrialsMinMover name="RTMin_restore_activesite_rtr" scorefxn="REF_coordcst" task_operations="rtr,template_chelating_res"/>
+
+        <RotamerTrialsMinMover name="RTMin_restore_activesite_rtr_cst" scorefxn="REF_coordcst_strong" task_operations="rtr,template_chelating_res"/>
+        <!-- <RotamerTrialsMinMover name="RTMin_restore_activesite_rtr_cst" scorefxn="REF_coordcst_strong" task_operations="rtr,design_only_active_site_repack001"/> -->
+
+        <RotamerTrialsMinMover name="RTMin_restore_activesite_strong_pssm" scorefxn="ref15_strong_pssm" task_operations="seqprofcons,design_only_active_site_repack001"/>
+
+        <PackRotamersMover name="hard_design" scorefxn="REF_coordcst" task_operations="no_cys,init,include_curr,seqprofcons,no_repack_cat_res,no_repack_active_site,no_design_active_site"/>
+        <PackRotamersMover name="soft_design" scorefxn="soft_rep_coordcst" task_operations="no_cys,init,include_curr,seqprofcons,no_repack_cat_res,no_repack_active_site,no_design_active_site"/>
+        <TaskAwareMinMover name="soft_min" scorefxn="soft_rep_coordcst" bb="0" jump="0" chi="1" task_operations="rtr,init,no_repack_cat_res,no_repack_active_site"/>
+        <TaskAwareMinMover name="hard_min" scorefxn="REF_coordcst" bb="0" jump="0" chi="1" task_operations="rtr,init,no_repack_cat_res,no_repack_active_site"/>
+        <RotamerTrialsMinMover name="rtmin" scorefxn="REF_coordcst" task_operations="rtr,init,no_repack_cat_res,no_repack_active_site"/>
+
+        <TaskAwareMinMover name="remove_strain" scorefxn="REF_coordcst" bb="0" jump="0" chi="1" task_operations="rtr,init,no_repack_cat_res"/>
+
+        <ParsedProtocol name="post_splice_refine">
+            <Add mover="soft_design"/>
+            <Add mover="soft_min"/>
+            <Add mover="soft_design"/>
+            <Add mover="hard_min"/>
+            <Add mover="hard_design"/>
+            <Add mover="hard_min"/>
+            <Add mover="hard_design"/>
+            <Add mover="rtmin"/>
+            <Add mover="rtmin"/>
+            <Add mover="hard_min"/>
+        </ParsedProtocol>
+        <LoopOver name="iter" iterations="3" mover_name="post_splice_refine"/>
+        <RunSimpleMetrics name="scores_sub_regions" metrics="scores_catres,scores_activesite" prefix=""/>
+    </MOVERS>
+    <PROTOCOLS>
+        <Add mover="cst_catalytic_res"/>
+
+        <Add mover="splice_in_blade1"/>
+        <Add mover="splice_in_blade2_4"/>
+        <Add mover="splice_in_blade5_6"/>
+        <Add mover="splice_in_blade7_8"/>
+
+        <Add mover="clear_constraints"/>
+        <Add mover="splice_seqconstraints"/>
+        <Add mover="RTMin_restore_activesite_strong_pssm"/>
+
+        <Add mover="cst_catalytic_res"/>
+        <Add mover="add_CA_cst"/>
+        <Add mover="RTMin_restore_activesite_rtr"/>
+        <Add mover="clear_constraints"/>
+        <Add mover="remove_strain"/>
+
+        <Add mover="splice_seqconstraints"/>
+        <Add mover="cst_catalytic_res"/>
+        <Add mover="add_CA_cst"/>
+
+        <Add mover="iter"/>
+
+        <Add filter="packstat"/>
+        <Add filter="nres"/>
+        <Add filter="nres_loops"/>
+        <Add filter="contacts"/>
+        <Add mover="scores_sub_regions"/>
+        <Add filter="degree"/>
+        <Add filter="degree_catres"/>
+        <Add filter="degree_activesite"/>
+    </PROTOCOLS>
+    <OUTPUT scorefxn="ref_pure"/>
+</ROSETTASCRIPTS>
+
+Description: models a chimera from 4 fragments, then designs and refines the structure
+
+HOW TO RUN:
+    1. The names in entry_blade* should match the names in the blade*.db files
+
+Example of the chimera of the fragments: 4xx6B 4e4pA 4w8lB 4pudA
+rosetta_scripts.default.linuxgccrelease @flags -out:prefix 4xx6B__4e4pA__4w8lB__4pudA__ -parser:script_vars entry_blade1=4xx6B entry_blade2_4=4e4pA entry_blade5_6=4w8lB entry_blade7_8=4pudA catres=88,145,235,264 activesite=88,145,235,264,51,52,55,95,144,201,233,272,315,323,327
+
+flags file:
+-database /Rosetta/main/database
+-use_occurrence_data 1
+@flags_pssm
+-use_input_sc
+-extrachi_cutoff 8
+-ignore_unrecognized_res
+-chemical:exclude_patches LowerDNA UpperDNA Cterm_amidation SpecialRotamer VirtualBB ShoveBB VirtualDNAPhosphate VirtualNTerm CTermConnect sc_orbitals pro_hydroxylated_case1 pro_hydroxylated_case2 ser_phosphorylated thr_phosphorylated tyr_phosphorylated tyr_sulfated lys_dimethylated lys_monomethylated lys_trimethylated lys_acetylated glu_carboxylated cys_acetylated tyr_diiodinated N_acetylated C_methylamidated MethylatedProteinCterm
+-linmem_ig 10
+-ignore_zero_occupancy false
+-no_nstruct_label true
+-jd2:ntrials 10
+-parser:protocol small_set_splice_in.xml
+-pdb_comments true
+-s 3w24_template.pdb.gz
+-unboundrot 3w24_template.pdb.gz
+-in:file:native 3w24_template.pdb.gz
+-parser:script_vars pdb_profile_match=pdb_profile_match
+-parser:script_vars template_pdb=3w24_template.pdb.gz
+-parser:script_vars db_blade1=blade1.db # output of previous step (small_set_splice_out.xml)
+-parser:script_vars db_blade2_4=blade2_4.db # output of previous step (small_set_splice_out.xml)
+-parser:script_vars db_blade5_6=blade5_6.db # output of previous step (small_set_splice_out.xml)
+-parser:script_vars db_blade7_8=blade7_8.db # output of previous step (small_set_splice_out.xml)
