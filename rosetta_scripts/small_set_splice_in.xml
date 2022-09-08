@@ -24,11 +24,13 @@
             <Reweight scoretype="coordinate_constraint" weight="1"/>
         </ScoreFunction>
     </SCOREFXNS>
+
     <RESIDUE_SELECTORS>
         <Index name="catres_res" resnums="%%catres%%"/> # only 4 catalytic residues
         <Index name="activesite_res" resnums="%%activesite%%"/> # all of the active site, including the 4 above
         <SecondaryStructure name="loops" include_terminal_loops="false" ss="L"/>
     </RESIDUE_SELECTORS>
+
     <TASKOPERATIONS>
         <RestrictToRepacking name="rtr"/>
         <InitializeFromCommandline name="init"/>
@@ -54,11 +56,8 @@
         <OperateOnResidueSubset name="no_design_active_site" selector="activesite_res">
             <RestrictToRepackingRLT/>
         </OperateOnResidueSubset>
-        <!-- <ThreadSequence name="Thread1" target_sequence="%%threaded_seq_1%%" start_res="%%start_thread_1%%" allow_design_around="0"/> -->
-        <!-- <ThreadSequence name="Thread2_4" target_sequence="%%threaded_seq_2_4%%" start_res="%%start_thread_2_4%%" allow_design_around="0"/> -->
-        <!-- <ThreadSequence name="Thread5_6" target_sequence="%%threaded_seq_5_6%%" start_res="%%start_thread_5_6%%" allow_design_around="0"/> -->
-        <!-- <ThreadSequence name="Thread7_8" target_sequence="%%threaded_seq_7_8%%" start_res="%%start_thread_7_8%%" allow_design_around="0"/> -->
     </TASKOPERATIONS>
+
     <FILTERS>
         <ResidueCount name="nres" confidence="0"/>
         <ResidueCount name="nres_loops" residue_selector="loops"/>
@@ -69,15 +68,13 @@
         <AverageDegree name="degree_activesite" confidence="0" task_operations="activesite"/>
         <DesignableResidues name="desres" task_operations="seqprofcons" designable="1" packable="1"/>
     </FILTERS>
+
     <SIMPLE_METRICS>
         <CompositeEnergyMetric name="scores_catres" residue_selector="catres_res" scorefxn="ref_pure" custom_type="catres"/>
         <CompositeEnergyMetric name="scores_activesite" residue_selector="activesite_res" scorefxn="ref_pure" custom_type="activesite"/>
     </SIMPLE_METRICS>
+
     <MOVERS>
-        <!-- <SpliceIn name="splice_in_blade1" min_seg="true" scorefxn="ref_2015" template_file="%%template_pdb%%" task_operations="init,include_curr,no_repack_cat_res,Thread1" torsion_database="%%db_blade1%%" database_pdb_entry="%%entry_blade1%%" design_shell="0" repack_shell="10000">	 -->
-        <!-- <Segments current_segment="blade1">     -->
-        <!-- </Segments>             -->
-        <!-- </SpliceIn> -->
         <SpliceIn name="splice_in_blade1" min_seg="true" scorefxn="ref_2015" template_file="%%template_pdb%%" task_operations="no_cys,init,include_curr,seqprofcons" torsion_database="%%db_blade1%%" database_pdb_entry="%%entry_blade1%%" design_shell="100" repack_shell="10000">
             <Segments current_segment="blade1">
                 <segment name="frm1" pdb_profile_match="%%pdb_profile_match%%" profiles="3w24_template:/home/labs/fleishman/rosaliel/repertoire/round2/template/frames/frm1.pssm"/>
@@ -128,15 +125,12 @@
                 <Segment name="frm2" pdb_profile_match="%%pdb_profile_match%%" profiles="3w24_template:/home/labs/fleishman/rosaliel/repertoire/round2/template/frames/frm2.pssm"/>
             </Segments>
         </Splice>
+        
         <AddConstraintsToCurrentConformationMover name="add_CA_cst"/>
         <AtomCoordinateCstMover name="cst_catalytic_res" func_groups="1" task_operations="design_only_active_site_repack001" coord_dev="0.01" native="true"/>
         <ClearConstraintsMover name="clear_constraints"/>
 
         <RotamerTrialsMinMover name="RTMin_restore_activesite_rtr" scorefxn="REF_coordcst" task_operations="rtr,template_chelating_res"/>
-
-        <RotamerTrialsMinMover name="RTMin_restore_activesite_rtr_cst" scorefxn="REF_coordcst_strong" task_operations="rtr,template_chelating_res"/>
-        <!-- <RotamerTrialsMinMover name="RTMin_restore_activesite_rtr_cst" scorefxn="REF_coordcst_strong" task_operations="rtr,design_only_active_site_repack001"/> -->
-
         <RotamerTrialsMinMover name="RTMin_restore_activesite_strong_pssm" scorefxn="ref15_strong_pssm" task_operations="seqprofcons,design_only_active_site_repack001"/>
 
         <PackRotamersMover name="hard_design" scorefxn="REF_coordcst" task_operations="no_cys,init,include_curr,seqprofcons,no_repack_cat_res,no_repack_active_site,no_design_active_site"/>
